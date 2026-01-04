@@ -6,3 +6,5 @@ scipy
 seaborn
 scikit-learn
 pytest
+nltk
+pyarrow
