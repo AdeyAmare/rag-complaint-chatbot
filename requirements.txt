@@ -8,3 +8,8 @@ scikit-learn
 pytest
 nltk
 pyarrow
+tqdm
+sentence-transformers
+langchain
+faiss-cpu
+langchain-text-splitters
