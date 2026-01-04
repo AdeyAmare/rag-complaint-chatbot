@@ -1,0 +1,16 @@
+2026-01-04 14:25:32,834 [INFO] Use pytorch device_name: cpu
+2026-01-04 14:25:32,837 [INFO] Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2026-01-04 14:25:46,519 [INFO] Loaded embedding model: sentence-transformers/all-MiniLM-L6-v2
+2026-01-04 14:25:46,519 [INFO] EmbeddingProcessor initialized
+2026-01-04 14:26:24,979 [INFO] Loaded cleaned dataset with 454,472 rows
+2026-01-04 14:26:25,728 [INFO] Stratified sample contains 14,349 rows across 7 categories
+2026-01-04 14:26:34,449 [INFO] Total chunks created: 46,161
+2026-01-04 15:20:41,152 [INFO] Generated embeddings with shape: (46161, 384)
+2026-01-04 15:20:41,207 [INFO] FAISS index created with 46161 vectors
+2026-01-04 15:20:41,399 [INFO] FAISS index and metadata saved in C:\Users\amare\Documents\KAIM\week-7\rag-complaint-chatbot\vector_store
+2026-01-04 15:20:41,401 [INFO] Task 2 pipeline completed successfully
+2026-01-04 15:20:49,758 [INFO] Sampled complaints: 14,349
+2026-01-04 15:20:49,758 [INFO] Total text chunks: 46,161
+2026-01-04 15:20:49,758 [INFO] Embeddings shape: (46161, 384)
+2026-01-04 15:20:49,766 [INFO] FAISS index vectors: 46161
+2026-01-04 15:20:49,769 [INFO] Vector store saved in: C:\Users\amare\Documents\KAIM\week-7\rag-complaint-chatbot\vector_store
