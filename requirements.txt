@@ -1,0 +1,10 @@
+matplotlib
+numpy
+pandas
+python-dotenv
+scipy
+seaborn
+scikit-learn
+pytest
+nltk
+pyarrow
