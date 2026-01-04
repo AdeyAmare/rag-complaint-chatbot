@@ -25,8 +25,30 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 class EDAProcessor:
+    """
+    End-to-end EDA and preprocessing pipeline for large-scale consumer complaint data.
+
+    This class:
+    - Streams large Parquet files in batches
+    - Performs exploratory data analysis (EDA)
+    - Cleans and normalizes complaint narratives
+    - Filters by allowed financial product categories
+    - Writes cleaned outputs incrementally to CSV
+    - Generates and saves EDA visualizations
+    """
+
     def __init__(self, parquet_path, output_csv_path, figures_dir, batch_size=50000):
+        """
+        Initialize the EDAProcessor.
+
+        Args:
+            parquet_path (str or Path): Path to the input Parquet dataset
+            output_csv_path (str or Path): Destination CSV path for cleaned data
+            figures_dir (str or Path): Directory where EDA plots will be saved
+            batch_size (int): Number of rows to process per batch
+        """
         self.parquet_path = parquet_path
         self.output_csv_path = output_csv_path
         self.batch_size = batch_size
@@ -58,6 +80,12 @@ class EDAProcessor:
     # Load batches
     # -----------------------------
     def load_batches(self):
+        """
+        Lazily load the Parquet dataset in batches.
+
+        Yields:
+            pd.DataFrame: A batch of rows converted to a pandas DataFrame
+        """
         parquet = pq.ParquetFile(self.parquet_path)
         for batch in parquet.iter_batches(batch_size=self.batch_size):
             yield batch.to_pandas()
@@ -66,6 +94,17 @@ class EDAProcessor:
     # EDA counters
     # -----------------------------
     def eda_step(self, df: pd.DataFrame):
+        """
+        Update high-level EDA statistics for a batch.
+
+        Tracks:
+        - Total rows processed
+        - Product distribution
+        - Presence or absence of complaint narratives
+
+        Args:
+            df (pd.DataFrame): Raw batch dataframe
+        """
         self.total_rows += len(df)
         self.product_distribution.update(df["Product"].dropna().values)
         narrative = df["Consumer complaint narrative"]
@@ -77,6 +116,23 @@ class EDAProcessor:
     # Clean + normalize
     # -----------------------------
     def clean_text_noise(self, text):
+        """
+        Remove noise and boilerplate from raw complaint text.
+
+        This includes:
+        - URLs
+        - Phone numbers
+        - Account-like identifiers
+        - HTML artifacts
+        - Known boilerplate phrases
+        - Punctuation
+
+        Args:
+            text (str): Raw complaint narrative
+
+        Returns:
+            str: Cleaned lowercase text
+        """
         text = str(text).lower()
         text = re.sub(r'http\S+|www\S+', '', text)
         text = re.sub(r'\b\d{3}[-.\s]?\d{4}\b', '', text)
@@ -94,6 +150,20 @@ class EDAProcessor:
         return text.strip()
 
     def normalize_text(self, text):
+        """
+        Normalize cleaned text via tokenization, stopword removal, and lemmatization.
+
+        Steps:
+        - Tokenize
+        - Remove stopwords and short tokens
+        - Lemmatize verbs and nouns
+
+        Args:
+            text (str): Cleaned text
+
+        Returns:
+            str: Normalized text
+        """
         tokens = word_tokenize(text)
         tokens = [t for t in tokens if t not in self.stop_words and len(t) > 2]
         lemmas = [self.lemmatizer.lemmatize(t, pos='v') for t in tokens]
@@ -104,15 +174,29 @@ class EDAProcessor:
     # Filter and clean
     # -----------------------------
     def filter_and_clean(self, df: pd.DataFrame):
+        """
+        Filter complaints and apply text preprocessing.
+
+        Steps:
+        - Remove rows without narratives
+        - Track raw narrative lengths
+        - Filter to allowed product categories
+        - Clean and normalize text
+        - Track cleaned narrative lengths
+
+        Args:
+            df (pd.DataFrame): Raw batch dataframe
+
+        Returns:
+            pd.DataFrame: Filtered and cleaned dataframe
+        """
         narrative = df["Consumer complaint narrative"].fillna("")
         has_text = narrative.str.strip() != ""
         df = df[has_text].copy()
 
-        # Raw lengths
         raw_lengths = narrative[has_text].str.split().str.len()
         self.raw_word_lengths.extend(raw_lengths.tolist())
 
-        # Product filtering
         mask = df["Product"].str.lower().apply(
             lambda x: any(kw in x for kw in self.allowed_keywords)
         )
@@ -123,7 +207,6 @@ class EDAProcessor:
         df["processed_feedback"] = df["Consumer complaint narrative"].apply(self.clean_text_noise)
         df["normalized_feedback"] = df["processed_feedback"].apply(self.normalize_text)
 
-        # Clean lengths
         clean_lengths = df["normalized_feedback"].str.split().str.len()
         self.word_lengths.extend(clean_lengths.tolist())
 
@@ -133,13 +216,30 @@ class EDAProcessor:
     # Save CSV
     # -----------------------------
     def save_csv(self, df: pd.DataFrame, write_header: bool):
-        df.to_csv(self.output_csv_path, mode='w' if write_header else 'a',
-                  header=write_header, index=False)
+        """
+        Append cleaned data to the output CSV.
+
+        Args:
+            df (pd.DataFrame): Cleaned batch dataframe
+            write_header (bool): Whether to write CSV header
+        """
+        df.to_csv(
+            self.output_csv_path,
+            mode='w' if write_header else 'a',
+            header=write_header,
+            index=False
+        )
 
     # -----------------------------
     # Build EDA summary
     # -----------------------------
     def build_results(self):
+        """
+        Compile final EDA summary statistics.
+
+        Returns:
+            dict: Aggregated dataset statistics and narrative length metrics
+        """
         raw_wl = pd.Series(self.raw_word_lengths)
         clean_wl = pd.Series(self.word_lengths)
         return {
@@ -150,13 +250,13 @@ class EDAProcessor:
             "raw_narrative_length_stats": {
                 "min": int(raw_wl.min()) if not raw_wl.empty else 0,
                 "max": int(raw_wl.max()) if not raw_wl.empty else 0,
-                "mean": round(float(raw_wl.mean()),2) if not raw_wl.empty else 0,
+                "mean": round(float(raw_wl.mean()), 2) if not raw_wl.empty else 0,
                 "median": int(raw_wl.median()) if not raw_wl.empty else 0
             },
             "clean_narrative_length_stats": {
                 "min": int(clean_wl.min()) if not clean_wl.empty else 0,
                 "max": int(clean_wl.max()) if not clean_wl.empty else 0,
-                "mean": round(float(clean_wl.mean()),2) if not clean_wl.empty else 0,
+                "mean": round(float(clean_wl.mean()), 2) if not clean_wl.empty else 0,
                 "median": int(clean_wl.median()) if not clean_wl.empty else 0
             }
         }
@@ -165,7 +265,10 @@ class EDAProcessor:
     # Separate plots
     # -----------------------------
     def plot_product_distribution(self):
-        plt.figure(figsize=(8,4))
+        """
+        Plot and save complaint counts by product category.
+        """
+        plt.figure(figsize=(8, 4))
         sns.barplot(
             x=list(self.product_distribution.keys()),
             y=list(self.product_distribution.values())
@@ -179,7 +282,10 @@ class EDAProcessor:
         logger.info(f"Product distribution plot saved: {path}")
 
     def plot_narrative_availability(self):
-        plt.figure(figsize=(6,4))
+        """
+        Plot and save counts of complaints with and without narratives.
+        """
+        plt.figure(figsize=(6, 4))
         sns.barplot(
             x=["With Narrative", "Without Narrative"],
             y=[self.with_narrative, self.without_narrative]
@@ -192,7 +298,10 @@ class EDAProcessor:
         logger.info(f"Narrative availability plot saved: {path}")
 
     def plot_raw_word_lengths(self):
-        plt.figure(figsize=(8,5))
+        """
+        Plot and save histogram of raw narrative word counts.
+        """
+        plt.figure(figsize=(8, 5))
         sns.histplot(pd.Series(self.raw_word_lengths), bins=50, color='skyblue')
         plt.title("Raw Narrative Word Counts")
         plt.xlabel("Word Count")
@@ -204,7 +313,10 @@ class EDAProcessor:
         logger.info(f"Raw word length histogram saved: {path}")
 
     def plot_clean_word_lengths(self):
-        plt.figure(figsize=(8,5))
+        """
+        Plot and save histogram of cleaned narrative word counts.
+        """
+        plt.figure(figsize=(8, 5))
         sns.histplot(pd.Series(self.word_lengths), bins=50, color='orange')
         plt.title("Clean Narrative Word Counts")
         plt.xlabel("Word Count")
@@ -219,6 +331,12 @@ class EDAProcessor:
     # Run pipeline
     # -----------------------------
     def run(self):
+        """
+        Execute the full EDA and preprocessing pipeline.
+
+        Returns:
+            dict: Final EDA summary statistics
+        """
         write_header = True
         for batch_num, df in enumerate(self.load_batches(), start=1):
             logger.info(f"Processing batch {batch_num} with {len(df):,} rows")

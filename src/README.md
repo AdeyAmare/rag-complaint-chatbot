@@ -47,9 +47,9 @@ results = eda.run()
 2. **Prepare RAG data**
 
 ```python
-from rag_prep import RAGPrep
+from rag_prep import EmbeddingProcessor
 
-rag = RAGPrep(vector_store_dir="vector_store/")
-rag.load_index()
+rag = EmbeddingProcessor(vector_store_dir="vector_store/")
+rag.run_pipeline()
 ```
 

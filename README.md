@@ -161,6 +161,9 @@ No additional preprocessing is required.
 * **Notebook execution & figures:**
   👉 [`notebooks/README.md`](notebooks/README.md)
 
+* **Unit Tests:**
+  👉 [`tests/README.md`](tests/README.md)
+
 ---
 
 ## Notes & Design Decisions
