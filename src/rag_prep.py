@@ -1,6 +1,3 @@
-# -----------------------------
-# Task 2: Text Chunking, Embedding, and Vector Store Indexing (with logging and error handling)
-# -----------------------------
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -26,12 +23,20 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 # -----------------------------
 # Embedding Processor Class
 # -----------------------------
 class EmbeddingProcessor:
     """
-    Task 2: Handles sampling, text chunking, embedding, and vector store indexing.
+    Handles sampling, text chunking, embedding, and FAISS vector store indexing.
+
+    Workflow:
+    1. Load cleaned CSV dataset.
+    2. Stratified sampling by product category.
+    3. Split complaint narratives into overlapping chunks.
+    4. Generate sentence embeddings for each chunk.
+    5. Build and save FAISS vector index with associated metadata.
     """
 
     def __init__(
@@ -44,6 +49,18 @@ class EmbeddingProcessor:
         embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
         random_state: int = 42
     ):
+        """
+        Initialize the EmbeddingProcessor.
+
+        Args:
+            cleaned_csv_path (str): Path to the cleaned CSV dataset.
+            vector_store_dir (str): Directory to save FAISS index and metadata.
+            sample_size (int): Total number of rows to sample from dataset.
+            chunk_size (int): Maximum characters per text chunk.
+            chunk_overlap (int): Overlap in characters between consecutive chunks.
+            embedding_model_name (str): SentenceTransformer model to use.
+            random_state (int): Random seed for reproducible sampling.
+        """
         self.cleaned_csv_path = Path(cleaned_csv_path)
         self.vector_store_dir = Path(vector_store_dir)
         self.vector_store_dir.mkdir(parents=True, exist_ok=True)
@@ -77,6 +94,16 @@ class EmbeddingProcessor:
     # Load cleaned dataset
     # -----------------------------
     def load_data(self):
+        """
+        Load the cleaned CSV dataset into memory.
+
+        Returns:
+            pd.DataFrame: Loaded dataset.
+
+        Raises:
+            FileNotFoundError: If CSV file does not exist.
+            Exception: For other I/O or parsing errors.
+        """
         try:
             self.df = pd.read_csv(self.cleaned_csv_path)
             logger.info(f"Loaded cleaned dataset with {len(self.df):,} rows")
@@ -92,6 +119,17 @@ class EmbeddingProcessor:
     # Stratified sampling
     # -----------------------------
     def stratified_sample(self, product_col="Product"):
+        """
+        Perform stratified sampling across product categories.
+
+        Ensures approximately equal representation of each product in the sample.
+
+        Args:
+            product_col (str): Column name for product categories.
+
+        Returns:
+            pd.DataFrame: Sampled dataset.
+        """
         try:
             num_categories = self.df[product_col].nunique()
             per_category = int(self.sample_size / num_categories)
@@ -111,6 +149,18 @@ class EmbeddingProcessor:
     # Chunk text and store metadata
     # -----------------------------
     def chunk_texts(self, text_col="Consumer complaint narrative", product_col="Product"):
+        """
+        Split complaint narratives into smaller overlapping chunks.
+
+        Also stores metadata including complaint ID, product, and chunk index.
+
+        Args:
+            text_col (str): Column containing complaint text.
+            product_col (str): Column containing product category.
+
+        Returns:
+            tuple: (list of chunk texts, list of metadata dicts)
+        """
         self.chunks = []
         self.metadata = []
 
@@ -139,6 +189,15 @@ class EmbeddingProcessor:
     # Embed all chunks
     # -----------------------------
     def embed_chunks(self, batch_size=512):
+        """
+        Generate embeddings for all text chunks using the sentence transformer model.
+
+        Args:
+            batch_size (int): Number of chunks to embed in each batch.
+
+        Returns:
+            np.ndarray: Array of embeddings.
+        """
         all_embeddings = []
 
         try:
@@ -159,6 +218,13 @@ class EmbeddingProcessor:
     # Build FAISS vector store
     # -----------------------------
     def build_faiss_index(self):
+        """
+        Create a FAISS vector index from embeddings and save it along with metadata.
+
+        Saves:
+        - FAISS index file: faiss_index.idx
+        - Metadata pickle: metadata.pkl
+        """
         try:
             dim = self.embeddings.shape[1]
             self.index = faiss.IndexFlatL2(dim)
@@ -178,6 +244,14 @@ class EmbeddingProcessor:
     # Run the full pipeline
     # -----------------------------
     def run_pipeline(self):
+        """
+        Execute the complete Task 2 pipeline:
+        1. Load cleaned CSV
+        2. Stratified sampling
+        3. Chunk texts
+        4. Generate embeddings
+        5. Build FAISS index and save metadata
+        """
         try:
             self.load_data()
             self.stratified_sample()
