@@ -13,3 +13,6 @@ sentence-transformers
 langchain
 faiss-cpu
 langchain-text-splitters
+torch
+transformers
+hf_xet
