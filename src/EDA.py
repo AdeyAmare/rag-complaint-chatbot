@@ -266,20 +266,32 @@ class EDAProcessor:
     # -----------------------------
     def plot_product_distribution(self):
         """
-        Plot and save complaint counts by product category.
+        Plot and save complaint counts by product category with readable labels.
         """
-        plt.figure(figsize=(8, 4))
+        plt.figure(figsize=(10, 6))  # make it wider and taller
         sns.barplot(
             x=list(self.product_distribution.keys()),
             y=list(self.product_distribution.values())
         )
-        plt.title("Complaint Distribution by Product")
-        plt.xticks(rotation=30)
+        
+        plt.title("Complaint Distribution by Product", fontsize=16)
+        
+        # Rotate labels for readability
+        plt.xticks(rotation=45, ha='right', fontsize=12)  # 45° and align to right
+        
+        # Add y-axis label
+        plt.ylabel("Number of Complaints", fontsize=14)
+        
+        # Tight layout to prevent clipping
         plt.tight_layout()
+        
+        # Save figure
         path = self.figures_dir / "product_distribution.png"
-        plt.savefig(path)
+        plt.savefig(path, dpi=300)  # higher resolution for clarity
         plt.close()
+        
         logger.info(f"Product distribution plot saved: {path}")
+
 
     def plot_narrative_availability(self):
         """
