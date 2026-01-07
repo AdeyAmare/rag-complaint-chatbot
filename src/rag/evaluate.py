@@ -1,4 +1,5 @@
 import pandas as pd
+from typing import Any
 
 QUESTIONS = [
     "What problems do customers have with credit cards?",
@@ -22,33 +23,59 @@ QUESTIONS = [
     "Are there problems with savings account access?"
 ]
 
-def evaluate(pipeline):
+
+def evaluate(pipeline: Any) -> pd.DataFrame:
+    """
+    Runs a RAG pipeline against a set of representative questions
+    and prepares an evaluation table for reporting.
+
+    The function also exports the results to 'rag_evaluation_table.csv'.
+
+    Args:
+        pipeline (Any): An object with an 'answer' method that accepts
+                        a question string and returns a dictionary with
+                        'answer' and 'sources' keys.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing questions, generated answers,
+                      retrieved sources, and placeholders for qualitative analysis.
+
+    Raises:
+        AttributeError: If the pipeline does not have an 'answer' method.
+        ValueError: If a question returns an invalid result structure.
+    """
+    if not hasattr(pipeline, "answer"):
+        raise AttributeError("The pipeline object must have an 'answer' method.")
+
     rows = []
+    print(f"Starting evaluation on {len(QUESTIONS)} questions...")
 
     for q in QUESTIONS:
         result = pipeline.answer(q)
+        if not isinstance(result, dict) or "answer" not in result or "sources" not in result:
+            raise ValueError(f"Invalid result structure for question: {q}")
+
         answer = result["answer"]
-        
-        # Automated Diagnostic Scoring
-        # 1: Refusal (No info)
-        # 2: Nonsense/Fragmented
-        # 4-5: Coherent & Sourced
-        if "do not have enough information" in answer.lower():
-            score = 1
-            comments = "Model Refusal: Context was likely too fragmented or truncated."
-        elif len(answer.split()) < 10:
-            score = 2
-            comments = "Output too brief or fragmented. Likely model capacity issue."
-        else:
-            score = 4
-            comments = "Coherent answer generated from context."
+
+        # Format sources: Show the first 1-2 sources for scannability
+        sources_list = result["sources"][:2]
+        formatted_sources = " | ".join(
+            [f"Source {i+1}: {s['text'][:150]}..." for i, s in enumerate(sources_list)]
+        )
 
         rows.append({
             "Question": q,
             "Generated Answer": answer,
-            "Retrieved Sources": " | ".join([s["text"][:100] + "..." for s in result["sources"]]),
-            "Quality Score (1-5)": score,
-            "Comments/Analysis": comments
+            "Retrieved Sources": formatted_sources,
+            "Quality Score (1-5)": "",  # Left blank for manual qualitative analysis
+            "Comments/Analysis": ""     # Left blank for manual qualitative analysis
         })
 
-    return pd.DataFrame(rows)
+    # Create DataFrame
+    df = pd.DataFrame(rows)
+
+    # Export to CSV
+    df.to_csv("rag_evaluation_table.csv", index=False)
+    print("✓ Evaluation complete. Results saved to 'rag_evaluation_table.csv'.")
+
+    return df

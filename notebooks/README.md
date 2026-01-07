@@ -1,7 +1,7 @@
 # Notebooks
 
-This directory contains Jupyter notebooks that **run and validate the data pipelines** implemented in `src/EDA.py` and `src/rag_prep.py`.
-They are responsible for execution, inspection, and visualization — not core logic.
+This directory contains Jupyter notebooks that **run, validate, and demonstrate the data pipelines and RAG system** implemented in `src/`.
+Notebooks are used for execution, inspection, evaluation, and visualization — **not core logic**.
 
 ---
 
@@ -9,7 +9,7 @@ They are responsible for execution, inspection, and visualization — not core l
 
 * Executes `EDAProcessor` on the raw CFPB complaints dataset.
 * Processes the data in large batches.
-* Writes the cleaned, filtered complaints to CSV.
+* Writes the cleaned and filtered complaints to CSV.
 * Generates and saves EDA figures:
 
   * Product distribution
@@ -23,12 +23,12 @@ They are responsible for execution, inspection, and visualization — not core l
 
 ---
 
-## Task 2 Notebook – Embedding & Vector Store Prep
+## Task 2 Notebook – Embedding & Vector Store Preparation
 
 * Executes `EmbeddingProcessor` from `rag_prep.py`.
 * Performs stratified sampling on the cleaned dataset.
 * Chunks complaint narratives and generates embeddings.
-* Builds and saves a FAISS vector index and metadata.
+* Builds and saves a FAISS vector index and associated metadata.
 * Produces diagnostic visualizations:
 
   * Sampled complaints per product
@@ -38,14 +38,53 @@ They are responsible for execution, inspection, and visualization — not core l
 
 **Output**
 
-* FAISS index and metadata in `vector_store/`
+* Embeddings and metadata stored as Parquet
+* FAISS index files saved to disk
 * Figures saved to `reports/figures/`
+
+---
+
+## Task 3 Notebook – RAG Pipeline Execution & Evaluation (`rag_pipeline.ipynb`)
+
+* Initializes and loads the FAISS-backed `ComplaintVectorStore`.
+
+* Runs semantic retrieval using `ComplaintRetriever`.
+
+* Generates natural language answers with `ComplaintGenerator`.
+
+* Connects retrieval and generation via `ComplaintRAGPipeline`.
+
+* Executes multiple example queries to inspect:
+
+  * Retrieved complaint text
+  * Source metadata
+  * Similarity scores
+
+* Runs an automated evaluation suite using predefined questions via `evaluate()`:
+
+  * Collects answers
+  * Tracks source grounding
+  * Outputs results as a DataFrame
+  * Converts evaluation results to Markdown for reporting
+
+**Key Capabilities Demonstrated**
+
+* End-to-end RAG flow (retrieve → generate → cite sources)
+* Multi-question querying across different financial products
+* Transparent source attribution for generated answers
+* Lightweight evaluation for qualitative validation
+
+**Output**
+
+* Console inspection of retrieved documents and answers
+* Evaluation results as a Pandas DataFrame
+* Markdown-formatted evaluation table for easy reporting
 
 ---
 
 ## Notes
 
-* All heavy processing logic lives in `src/`.
+* All heavy processing and business logic lives in `src/`.
+* Notebooks are orchestration and validation layers only.
 * Notebooks are safe to rerun and do not modify raw data.
-* Figures are saved automatically; plots are also displayed inline for inspection.
-
+* Figures and artifacts are saved automatically and also displayed inline for inspection.
