@@ -2,9 +2,9 @@
 
 ### Retrieval-Augmented Generation (RAG) Data Pipeline
 
-This project implements an end-to-end data preparation pipeline for building retrieval-augmented AI systems over CFPB consumer complaint data. It transforms raw regulatory complaint records into a structured, embedded, and indexed corpus suitable for semantic search and downstream RAG applications.
+This project implements an end-to-end pipeline for building **retrieval-augmented AI systems** over CFPB consumer complaint data. It transforms raw regulatory complaint records into a structured, embedded, and indexed corpus suitable for semantic search, question answering, and downstream RAG applications.
 
-The repository cleanly separates **core processing logic**, **execution and analysis**, and **generated artifacts**.
+The repository cleanly separates **core processing logic**, **execution and analysis**, and **generated artifacts**, making the system easy to inspect, evaluate, and extend.
 
 ---
 
@@ -12,23 +12,31 @@ The repository cleanly separates **core processing logic**, **execution and anal
 
 ```
 .
-├── src/                    # Core, reusable pipeline logic
-│   ├── EDA.py               # EDA + preprocessing
-│   ├── rag_prep.py          # Chunking, embedding, vector indexing
-│   └── README.md            # Source code documentation
+├── src/                     # Core, reusable pipeline logic
+│   ├── EDA.py                # EDA and preprocessing
+│   ├── rag_prep.py           # Chunking, embedding, vector indexing
+│   ├── rag/
+│   │   ├── vector_store.py   # FAISS index wrapper
+│   │   ├── retriever.py      # Semantic retrieval
+│   │   ├── generator.py      # Answer generation
+│   │   ├── pipeline.py       # RAG pipeline orchestration
+│   │   └── evaluate.py       # Evaluation utilities
+│   └── README.md             # Source code documentation
 │
-├── notebooks/               # Executable notebooks
+├── notebooks/                # Executable notebooks
 │   ├── EDA.ipynb
 │   ├── rag_prep.ipynb
-│   └── README.md            # Notebook documentation
+│   ├── rag_pipeline.ipynb
+│   └── README.md
 │
 ├── data/
-│   ├── raw/                 # Original CFPB data (Parquet)
-│   └── processed/           # Cleaned and filtered CSV
+│   ├── raw/                  # Original CFPB data (Parquet)
+│   └── processed/            # Cleaned and filtered CSV
 │
-├── vector_store/            # FAISS index + metadata (generated)
+├── vector_store/             # FAISS index and metadata (generated)
 ├── reports/
-│   └── figures/             # EDA & embedding diagnostics
+│   └── figures/              # EDA and embedding diagnostics
+├── app.py                    # Interactive Gradio complaint assistant
 └── README.md
 ```
 
@@ -42,134 +50,82 @@ Raw CFPB complaints are processed in large batches to:
 
 * Analyze product coverage and narrative availability
 * Clean and normalize complaint narratives
-* Filter data to relevant financial products
+* Filter data to a focused set of financial products
 * Produce a reusable, model-ready dataset
+
+This step ensures the downstream retrieval system operates on high-quality, consistent text data.
+
+---
 
 ### 2. Embedding & Vector Indexing
 
-The cleaned dataset is:
+The cleaned complaint dataset is:
 
 * Stratified sampled by product
-* Chunked into overlapping text segments
-* Embedded using a sentence-transformer model
-* Indexed using FAISS for fast similarity search
+* Split into overlapping text segments
+* Embedded using a transformer-based sentence embedding model
+* Indexed using FAISS for efficient similarity search
 
-### 3. RAG-Ready Outputs (Artifacts)
-
-The final artifacts enable:
-
-* Semantic retrieval
-* Context injection for LLMs
-* Exploratory analysis of embedding space
+All embeddings, metadata, and indexes are saved to disk and reused across experiments.
 
 ---
 
-## Usage
+### 3. RAG Pipeline Execution & Evaluation
 
-### Prerequisites
+Once the vector store is built, the full **retrieval-augmented generation workflow** is exercised:
 
-* Python 3.9+
-* Sufficient memory for batch processing and embedding
-* CFPB complaints dataset in Parquet format
+1. **Vector Store**
+   Loads or builds a FAISS index from persisted embeddings.
 
-Install dependencies (example):
+2. **Retriever**
+   Performs semantic search to retrieve the most relevant complaint chunks for a given question.
 
-```bash
-pip install -r requirements.txt
-```
+3. **Generator**
+   Uses retrieved complaints as context to generate grounded natural-language answers.
 
----
+4. **RAG Pipeline**
+   Orchestrates retrieval and generation into a single question-answering interface with source attribution.
 
-### Step 1: Run EDA & Preprocessing (Task 1)
+5. **Evaluation**
+   Runs a predefined set of representative questions and outputs answers alongside their source metadata for inspection.
 
-Run the **Task 1 notebook** located in `notebooks/`.
-
-This notebook executes the `EDAProcessor` from `src/EDA.py`.
-
-**What happens**
-
-* Loads raw complaint data from Parquet in large batches
-* Computes dataset-level statistics (products, narratives, lengths)
-* Cleans complaint narratives using NLP preprocessing
-* Filters complaints to required product categories
-* Saves the cleaned dataset
-* Generates and saves EDA visualizations
-
-**Inputs**
-
-* `data/raw/complaints.parquet`
-
-**Outputs**
-
-* `data/processed/filtered_complaints.csv`
-* Figures saved to `reports/figures/`
+This setup enables systematic testing of answer quality, relevance, and grounding.
 
 ---
 
-### Step 2: Build Embeddings & Vector Store (Task 2)
+### 4. Interactive Complaint Assistant (Gradio)
 
-Run the **Task 2 notebook** in `notebooks/`.
+The project includes an optional **interactive web application** (`app.py`) built with Gradio:
 
-This notebook executes `EmbeddingProcessor` from `src/rag_prep.py`.
+* Users can ask natural-language questions about consumer complaints.
+* The system retrieves relevant complaint narratives and generates answers in real time.
+* Generated responses are displayed alongside the most relevant source complaints.
+* Designed for local use or lightweight deployment to support demos and stakeholder review.
 
-**What happens**
-
-* Loads the cleaned complaints CSV
-* Performs stratified sampling by product
-* Splits complaint narratives into overlapping chunks
-* Generates dense embeddings using a transformer model
-* Builds a FAISS vector index
-* Saves index and metadata to disk
-* Generates diagnostic and embedding visualizations
-
-**Inputs**
-
-* `data/processed/filtered_complaints.csv`
-
-**Outputs**
-
-* `vector_store/`
-
-  * FAISS index (`.idx`)
-  * Chunk metadata (`.pkl`)
-* Figures saved to `reports/figures/`, including:
-
-  * Sample distribution by product
-  * Chunk count per complaint
-  * Chunk length distribution
-  * PCA projections of embedding space
+This interface provides a practical way to explore and validate the RAG pipeline without interacting directly with notebooks or scripts.
 
 ---
 
-### Step 3: Downstream RAG or Retrieval Use
+## Usage Summary
 
-The contents of `vector_store/` can be loaded by any FAISS-compatible system to support:
+1. **Run EDA & preprocessing**
+   Clean and filter raw CFPB complaint data.
 
-* Semantic complaint search
-* Context retrieval for LLM prompts
-* Topic or product-specific complaint analysis
+2. **Build embeddings and vector store**
+   Generate embeddings, metadata, and FAISS indexes.
 
-No additional preprocessing is required.
+3. **Test the RAG pipeline**
+   Retrieve complaints, generate answers, and evaluate results.
 
----
-
-## Documentation
-
-* **Core pipeline logic:**
-  👉 [`src/README.md`](src/README.md)
-
-* **Notebook execution & figures:**
-  👉 [`notebooks/README.md`](notebooks/README.md)
-
-* **Unit Tests:**
-  👉 [`tests/README.md`](tests/README.md)
+4. **Optional interactive exploration**
+   Launch the Gradio app to query the system and inspect answers with sources.
 
 ---
 
 ## Notes & Design Decisions
 
 * Raw data is treated as immutable.
-* All heavy processing logic lives in `src`; notebooks only orchestrate execution and visualization.
-* The vector store is excluded from version control due to size.
-* Batch processing is used to support large-scale datasets without exhausting memory.
-
+* All heavy processing logic lives in `src`; notebooks are orchestration and validation layers only.
+* Vector store artifacts are excluded from version control due to size.
+* Batch processing is used to support large datasets without exhausting memory.
+* Evaluation focuses on qualitative correctness and source grounding rather than benchmark scores.

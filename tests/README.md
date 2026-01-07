@@ -1,8 +1,7 @@
-
 # Tests
 
-This folder contains **unit tests** for the core data processing and embedding components of the project.
-The tests are designed to validate **logic and data flow** without relying on large datasets, external services, or heavy model downloads.
+This folder contains **unit tests** for the core data processing, embedding, and retrieval-augmented generation (RAG) components of the project.
+The tests are designed to validate **logic, data flow, and component wiring** without depending on large datasets, external services, or brittle model behavior.
 
 The goal is to ensure the pipeline behaves correctly while keeping tests **fast, deterministic, and easy to run**.
 
@@ -19,7 +18,7 @@ Tests for the EDA pipeline focus on **text cleaning and normalization**, includi
 * Stopword filtering and lemmatization
 * Producing valid, non-empty normalized text
 
-These tests avoid loading large Parquet files and instead validate the core text-processing logic directly.
+These tests avoid loading large Parquet files and instead validate the core text-processing logic directly using small, in-memory inputs.
 
 ---
 
@@ -38,18 +37,38 @@ The embedding model is **mocked** so that:
 * No GPU is required
 * Tests run quickly and consistently
 
-An optional smoke test checks that FAISS index and metadata files are written correctly.
+An optional smoke test verifies that FAISS index files and metadata artifacts are written correctly.
+
+---
+
+### 3. Retrieval-Augmented Generation Pipeline (Task 3)
+
+Tests for the RAG pipeline validate **component integration and data flow**, not language model quality.
+
+These tests ensure that:
+
+* The FAISS-backed vector store loads successfully
+* Semantic retrieval returns ranked complaint chunks
+* The RAG pipeline returns a structured response containing:
+
+  * The original question
+  * A generated answer
+  * Retrieved source documents with metadata
+* The evaluation utility executes and returns a non-empty results table
+
+The RAG tests act as **sanity and wiring checks**, confirming that retrieval, generation, and orchestration work together correctly without asserting on exact model output.
 
 ---
 
 ## Testing Strategy
 
-* **Unit-focused**: Tests validate logic, not model quality or performance.
-* **Small inputs**: Tiny in-memory datasets are used.
-* **Mocked dependencies**: External libraries like sentence-transformers are mocked where appropriate.
-* **Fast execution**: All tests should complete in seconds.
+* **Unit-focused** — Tests validate logic and structure, not semantic correctness.
+* **Small inputs** — Tiny datasets or fixtures are used wherever possible.
+* **Mocked dependencies** — External models are mocked when appropriate to avoid downloads.
+* **Deterministic assertions** — Tests check shapes, presence of fields, and successful execution.
+* **Fast execution** — All tests are expected to complete in seconds on CPU.
 
-This approach reflects best practices for testing data and ML pipelines.
+This strategy reflects best practices for testing data pipelines and ML-adjacent systems.
 
 ---
 
@@ -67,10 +86,17 @@ To run only embedding-related tests:
 pytest tests/test_embedding_processor.py -v
 ```
 
+To run only RAG pipeline tests:
+
+```bash
+pytest tests/test_rag_pipeline.py -v
+```
+
 ---
 
 ## Notes
 
 * Progress bars (e.g., `tqdm`) and logging are left enabled for visibility but do not affect test outcomes.
-* These tests are intended to catch regressions in preprocessing, sampling, and chunking logic rather than validate semantic correctness.
+* Vector store artifacts must exist locally for RAG tests to run.
+* These tests are intended to catch regressions in preprocessing, sampling, retrieval, and pipeline wiring — not to evaluate model performance or answer quality.
 
