@@ -7,25 +7,15 @@ from pathlib import Path
 from typing import Optional
 
 PROMPT_TEMPLATE = """
-You are a financial analyst assistant for CrediTrust.
-Your task is to answer questions about customer complaints.
-
-Use ONLY the information provided in the context.
-If the answer is not contained in the context, say:
-"I do not have enough information to answer this question."
-
-Summarize common themes across the complaints.
-Do not quote individual customers.
-
 Context:
 {context}
-
-Question:
-{question}
+You are a financial analyst assistant for CrediTrust.
+Your task is to answer questions about customer complaints.
+Based on the complaints above, please answer the following question: {question}
+(If the context is truly unrelated to the question, state that you don't have enough info.)
 
 Answer:
 """
-
 
 class ComplaintGenerator:
     """
@@ -35,7 +25,7 @@ class ComplaintGenerator:
 
     def __init__(
         self,
-        model_name: Optional[str] = "google/flan-t5-small",
+        model_name: Optional[str] = "google/flan-t5-base",
         max_new_tokens: int = 300,
         temperature: float = 0.1,
         cache_dir: Optional[str] = None
