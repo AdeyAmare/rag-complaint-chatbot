@@ -16,3 +16,4 @@ langchain-text-splitters
 torch
 transformers
 hf_xet
+gradio
